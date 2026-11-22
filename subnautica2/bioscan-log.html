@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Subnautica 2 Bio-Scan Log</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a PDA-style bio-scan log. Header with slot-milestone gauge, how-it-works strip, filter bar, then dense entry rows by group. */
+:root {
+  --bg: #eef4f3;
+  --surface: #ffffff;
+  --surface-2: #e2ecea;
+  --fg: #0f2a30;
+  --muted: #4d676c;
+  --line: #c6d7d5;
+  --accent: #0b7d83;
+  --accent-soft: #d3ecec;
+  --warn: #9a5b06;
+  --warn-soft: #f7ead2;
+  --ok: #2d7a3e;
+  --ok-soft: #dcefdf;
+  --font-display: "Chakra Petch", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #07161c; --surface: #0d222a; --surface-2: #12303a; --fg: #dcecec; --muted: #8fabb0;
+    --line: #1e4250; --accent: #4fd1cf; --accent-soft: #123b42; --warn: #f0b75c; --warn-soft: #3a2a10;
+    --ok: #7fd18f; --ok-soft: #173622; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #07161c; --surface: #0d222a; --surface-2: #12303a; --fg: #dcecec; --muted: #8fabb0;
+  --line: #1e4250; --accent: #4fd1cf; --accent-soft: #123b42; --warn: #f0b75c; --warn-soft: #3a2a10;
+  --ok: #7fd18f; --ok-soft: #173622; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap {
+  max-width: 1080px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 2rem 4rem;
+}
+header { display: grid; gap: .9rem; margin-bottom: 1.5rem; }
+.eyebrow { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 6vw, 3rem); line-height: 1.05; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lede { margin: 0; max-width: 66ch; color: var(--muted); }
+.notice {
+  display: flex; gap: .6rem; align-items: flex-start;
+  background: var(--warn-soft); border: 1px solid var(--line);
+  border-radius: 6px; padding: .7rem .9rem; font-size: .9rem; max-width: 80ch;
+}
+.notice b { color: var(--warn); font-family: var(--font-mono); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; padding-top: .1rem; }
+.notice a { color: var(--accent); }
+
+.gauge { display: grid; gap: .5rem; max-width: 760px; }
+.gauge-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; font-family: var(--font-mono); font-size: .85rem; color: var(--muted); }
+.gauge-top strong { color: var(--fg); font-variant-numeric: tabular-nums; }
+.track { position: relative; height: 10px; background: var(--surface-2); border-radius: 5px; }
+.track i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); border-radius: 5px; transition: width .3s; }
+.mark { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--fg); opacity: .35; transform: translateX(-1px); }
+.mark.hit { background: var(--accent); opacity: 1; }
+.marks { position: relative; height: 1.2rem; font-family: var(--font-mono); font-size: .7rem; color: var(--muted); }
+.marks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.marks span:last-child { transform: translateX(-100%); }
+.marks span.hit { color: var(--accent); font-weight: 500; }
+
+.howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem; margin: 0; padding: 0; list-style: none; }
+.howto li { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .7rem .85rem; font-size: .88rem; min-width: 0; }
+.howto b { display: block; font-family: var(--font-display); font-size: .95rem; margin-bottom: .15rem; }
+
+.controls {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); padding-block: .75rem; border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: .6rem; align-items: center;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.search { flex: 1 1 220px; min-width: 0; font: inherit; padding: .5rem .75rem; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.chip {
+  font-family: var(--font-display); font-weight: 600; font-size: .85rem; letter-spacing: .02em;
+  padding: .35rem .7rem; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg); cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.toggle { display: flex; gap: .4rem; align-items: center; font-size: .85rem; color: var(--muted); cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+section.group { margin-top: 2rem; }
+.group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; margin-bottom: .5rem; }
+.group-head h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.35rem; margin: 0; }
+.group-head p { margin: 0; color: var(--muted); font-size: .88rem; flex: 1 1 300px; min-width: 0; }
+.count { font-family: var(--font-mono); font-size: .8rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 1.6rem minmax(13rem, 18rem) minmax(0, 1fr); gap: .25rem 1rem; padding: .8rem 0; border-bottom: 1px solid var(--line); }
+.row.done .name { text-decoration: line-through; text-decoration-color: var(--accent); color: var(--muted); }
+.row input[type="checkbox"] { width: 1.1rem; height: 1.1rem; margin: .2rem 0 0; accent-color: var(--accent); cursor: pointer; }
+.who { display: flex; gap: .75rem; align-items: flex-start; min-width: 0; }
+.who > div { min-width: 0; }
+.thumb { flex: none; width: 56px; height: 56px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.thumb svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.row.done .thumb { background: var(--surface-2); color: var(--muted); }
+.pics { display: inline-block; margin-top: .35rem; font-size: .82rem; color: var(--accent); }
+.name { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; line-height: 1.3; cursor: pointer; }
+.sub { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
+.tag { font-family: var(--font-mono); font-size: .7rem; padding: .1rem .4rem; border-radius: 3px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.tag.conf-listed { background: var(--ok-soft); color: var(--ok); }
+.tag.conf-report { background: var(--accent-soft); color: var(--accent); }
+.tag.conf-disputed { background: var(--warn-soft); color: var(--warn); }
+.where { min-width: 0; }
+.where p { margin: 0; }
+.where .unknown { color: var(--muted); font-style: italic; }
+.biomod { margin-top: .3rem; font-size: .85rem; }
+.biomod b { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 500; margin-right: .3rem; }
+.coord { font-family: var(--font-mono); font-size: .8rem; background: var(--surface-2); padding: 0 .3rem; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: .85rem; margin-top: .3rem; }
+.missing { margin-top: 2rem; border: 1px dashed var(--line); border-radius: 6px; padding: 1rem; color: var(--muted); font-size: .9rem; }
+.missing strong { color: var(--fg); font-family: var(--font-display); font-size: 1.05rem; display: block; margin-bottom: .25rem; }
+.missing a { color: var(--accent); }
+.empty { padding: 2rem 0; color: var(--muted); }
+
+footer { margin-top: 3rem; border-top: 1px solid var(--line); padding-top: 1rem; color: var(--muted); font-size: .85rem; }
+footer h2 { font-family: var(--font-display); font-size: 1.1rem; color: var(--fg); margin: 0 0 .5rem; }
+footer ul { padding-left: 1.1rem; margin: .5rem 0 0; columns: 2 18rem; column-gap: 2rem; }
+footer a { color: var(--accent); }
+.legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; margin-top: .5rem; }
+
+@media (max-width: 640px) {
+  .row { grid-template-columns: 1.6rem minmax(0, 1fr); }
+  .where { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) { .track i { transition: none; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-fish" viewBox="0 0 48 48"><path d="M6 24c6-9 18-11 28-4l8-6v20l-8-6c-10 7-22 5-28-4z"/><circle cx="14" cy="22" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-crab" viewBox="0 0 48 48"><ellipse cx="24" cy="28" rx="11" ry="7"/><path d="M13 26l-6-6m4 10l-6 2m26-6l6-6m-4 10l6 2M18 21l-3-6m15 6l3-6"/><circle cx="14" cy="12" r="3"/><circle cx="34" cy="12" r="3"/></symbol>
+  <symbol id="i-jelly" viewBox="0 0 48 48"><path d="M10 24a14 12 0 0 1 28 0z"/><path d="M14 24c0 6-2 10 0 16m6-16c0 6 2 10 0 16m8-16c0 6-2 10 0 16m6-16c0 6 2 10 0 16"/></symbol>
+  <symbol id="i-slug" viewBox="0 0 48 48"><path d="M6 34c4-10 14-12 24-10 6 1 10 4 12 10z"/><path d="M34 24l4-8m-8 7l1-8"/></symbol>
+  <symbol id="i-ray" viewBox="0 0 48 48"><path d="M24 12c8 6 16 10 20 14-8 0-14 2-20 6-6-4-12-6-20-6 4-4 12-8 20-14z"/><path d="M24 32v12"/></symbol>
+  <symbol id="i-creature" viewBox="0 0 48 48"><path d="M8 26c0-8 8-14 16-14s16 6 16 14-8 12-16 12S8 34 8 26z"/><circle cx="18" cy="24" r="1.6" fill="currentColor"/><path d="M40 26l6-4v8z"/></symbol>
+  <symbol id="i-leviathan" viewBox="0 0 48 48"><path d="M4 30c6-8 14-12 24-12 8 0 14 4 16 8-2 4-8 8-16 8-6 0-10-2-14-4l-8 6z"/><path d="M28 28l3 3 3-3"/><circle cx="36" cy="23" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-clam" viewBox="0 0 48 48"><path d="M6 28c2-10 10-16 18-16s16 6 18 16z"/><path d="M6 28c4 6 12 8 18 8s14-2 18-8"/><path d="M24 12v16m-8-14l3 14m13-14l-3 14"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 48 48"><path d="M24 44V22m0 8l-8-6m8 2l8-6"/><circle cx="24" cy="13" r="8"/><circle cx="13" cy="19" r="5"/><circle cx="35" cy="19" r="5"/></symbol>
+  <symbol id="i-plant" viewBox="0 0 48 48"><path d="M24 44V20"/><path d="M24 32c-8 0-12-6-12-12 8 0 12 6 12 12zm0-6c8 0 12-6 12-12-8 0-12 6-12 12z"/></symbol>
+  <symbol id="i-mushroom" viewBox="0 0 48 48"><path d="M10 22a14 10 0 0 1 28 0z"/><path d="M20 22v20h8V22"/></symbol>
+  <symbol id="i-coral" viewBox="0 0 48 48"><path d="M24 44V26m0 8l-8-8V16m8 18l8-8V12M16 22l-5-5m21 3l5-6M24 26l-3-10"/></symbol>
+  <symbol id="i-object" viewBox="0 0 48 48"><rect x="10" y="10" width="28" height="28" rx="4"/><path d="M10 24h28M24 10v28"/></symbol>
+</svg>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">PDA // Bio-scan log // Biolab slots</div>
+    <h1>Subnautica 2 Bio-Scan Log</h1>
+    <p class="lede">Lifeforms and other targets that count toward your bio-scan total. That total unlocks extra passive biomod slots at the Biolab. Tick each one after you scan it with the Bioscanner; your ticks stay in this browser.</p>
+
+    <div class="gauge" aria-label="Bio-scan progress toward passive slots">
+      <div class="gauge-top">
+        <span>Bio-scans <strong id="done">0</strong> / <strong>80</strong></span>
+        <span id="nextslot">Next passive slot at 10</span>
+      </div>
+      <div class="track" id="track"><i id="barfill"></i></div>
+      <div class="marks" id="marks"></div>
+    </div>
+
+    <ul class="howto">
+      <li><b>Use the Bioscanner</b>Scans from the regular Scanner don't count. Craft the Bioscanner at the Modification Station: Scanner, 3 Conduit Crystal, 2 Enameled Glass.</li>
+      <li><b>Each lifeform counts once</b>Scanning the same species again adds nothing. Check your running total at a Biolab.</li>
+      <li><b>Slot milestones</b>You start with 1 passive slot. More open at 10, 20, 40 and 80 bio-scans, for 5 in total.</li>
+    </ul>
+
+    <div class="notice"><b>Not all 80</b><span>No public source lists all 80 yet. This page has the <strong id="known">0</strong> targets I could confirm: 37 from the community bio-scan table plus extras that players report counting. Players say about 76 is reachable without much trouble and the last few are obscure. The rest are tracked in the community's <a href="https://docs.google.com/spreadsheets/d/176O9V0g5vhUu5xAry_f6id5O9zpugnQBZN_sjxeNzlo/edit?gid=0#gid=0">missing-scans spreadsheet</a>.</span></div>
+  </header>
+
+  <div class="controls">
+    <input id="q" class="search" type="search" placeholder="Search name, biome or biomod (e.g. Camouflage)" autocomplete="off" aria-label="Search">
+    <div class="chips" id="chips" role="group" aria-label="Filter by group"></div>
+    <label class="toggle" for="hideDone"><input id="hideDone" type="checkbox"> Hide scanned</label>
+  </div>
+
+  <main id="out"></main>
+
+  <div class="missing"><strong id="missingTitle">About 30 bio-scans not listed here</strong>Guides I could reach don't name them. Players point to small flora, fragments of plants and corals, and hidden objects as the usual gaps. Scan any lifeform you haven't seen in the Biolab total, and check the <a href="https://steamcommunity.com/app/1962700/discussions/0/572669129317681546/">80 Bio Scans</a> and <a href="https://steamcommunity.com/app/1962700/discussions/0/571543307930434139/">“Is there actually 80?”</a> Steam threads.</div>
+
+  <footer>
+    <h2>Reading the tags</h2>
+    <div class="legend">
+      <span class="tag conf-listed">In bio-scan table</span> on the community wiki's bio-scan list
+      <span class="tag conf-report">Player report</span> players say it counted; not on the table
+      <span class="tag conf-disputed">Disputed</span> sources conflict on whether it can be scanned
+    </div>
+    <p>Locations are where guides report each species; most roam further. Entries with no location are on the bio-scan table but no guide I could reach says where to find them. Biomod links come from biomod guides and can differ between game versions. The icons show what kind of lifeform each entry is, not how it looks in the game; use “See pictures” for real images.</p>
+    <h2 style="margin-top:1.25rem">Sources</h2>
+    <ul>
+      <li><a href="https://wiki.subnautica.com/sn2/Bioscanner">Subnautica 2 Wiki: Bioscanner</a></li>
+      <li><a href="https://wiki.subnautica.com/sn2/Biolab">Subnautica 2 Wiki: Biolab</a></li>
+      <li><a href="https://subnautica2.guide/wikis/bioscanner">subnautica2.guide: Bioscanner</a></li>
+      <li><a href="https://steamcommunity.com/app/1962700/discussions/0/572669129317681546/">Steam: 80 Bio Scans</a></li>
+      <li><a href="https://steamcommunity.com/app/1962700/discussions/0/571543307930434139/">Steam: Is there actually 80?</a></li>
+      <li><a href="https://pindrop.gg/subnautica-2/biomods">Pindrop: Biomods and bioscans</a></li>
+      <li><a href="https://allthings.how/subnautica-2-biomods-full-list-and-bioscanner-unlock-guide/">AllThings.how: Biomods</a></li>
+      <li><a href="https://www.keengamer.com/articles/guides/subnautica-2-all-biomods-and-how-to-get-them/">KeenGamer: Biomods</a></li>
+      <li><a href="https://www.playnews.gg/en/guides/subnautica-2-which-biomods-to-combine-after-the-1-1-update-passive-slots-and-bioscans">Playnews: Passive slots after 1.1</a></li>
+      <li><a href="https://insider-gaming.com/all-biomods-how-to-unlock-them-in-subnautica-2-bioscanner-explained/">Insider Gaming: Bioscanner</a></li>
+      <li><a href="https://game8.co/games/Subnautica-2/archives/600266">Game8: Fauna list</a></li>
+      <li><a href="https://game8.co/games/Subnautica-2/archives/598692">Game8: Leviathans</a></li>
+      <li><a href="https://wiki.subnautica.com/sn2/Great_Jaw">Subnautica 2 Wiki: Great Jaw</a></li>
+      <li><a href="https://subnautica2.fandom.com/wiki/Fauna">Subnautica 2 Fandom: Fauna</a></li>
+      <li><a href="https://subnautica2guides.com/en/fauna/fauna-list-and-all-creatures">subnautica2guides.com: Fauna</a></li>
+      <li><a href="https://game-checklists.com/subnautica2/flora-checklist/">game-checklists.com: Flora</a></li>
+      <li><a href="https://steamcommunity.com/sharedfiles/filedetails/?id=3728123549">Steam guide: Flora database</a></li>
+      <li><a href="https://www.youtube.com/watch?v=HdY1zoc8q7Q">YouTube: False Fission Drum guide</a></li>
+    </ul>
+    <p>Compiled November 2026 from fan guides and player threads.</p>
+  </footer>
+</div>
+
+<script>
+const GROUPS = [
+  { id: "fauna", label: "Fauna", blurb: "Fish, crustaceans, jellies, slugs and the rest." },
+  { id: "leviathan", label: "Leviathans", blurb: "Large species. Scan from a distance." },
+  { id: "flora", label: "Flora", blurb: "Plants, fungi and sessile growths." },
+  { id: "other", label: "Other", blurb: "Things players say count even though they aren't creatures or plants." },
+];
+const MILESTONES = [10, 20, 40, 80];
+const C = s => `<span class="coord">${s}</span>`;
+
+// conf: listed (on the bio-scan table), report (player reports), disputed
+// where: null when no guide gives a location
+const DATA = [
+  // Fauna on the bio-scan table
+  { id:"bloom-parasite", g:"fauna", name:"Bloom Parasite", conf:"listed", where:null },
+  { id:"blackthorn", g:"fauna", name:"Blackthorn", conf:"listed", where:"Root Canyon (listed by one guide as Black Hoverthorn)." },
+  { id:"bluemoon", g:"fauna", name:"Bluemoon", conf:"listed", biome:"Shallows", where:"Shallows. Passive fish." },
+  { id:"coral-crab", g:"fauna", name:"Coral Crab", conf:"listed", biome:"Shallows", where:"Shallows.", biomod:"Water Retention (per one guide)" },
+  { id:"epicurean", g:"fauna", name:"Epicurean", conf:"listed", where:null },
+  { id:"flash-slug", g:"fauna", name:"Flash Slug", conf:"listed", where:null },
+  { id:"geordie", g:"fauna", name:"Geordie", conf:"listed", where:null, biomod:"Filter Feeding, Oxygen Therapy (with Halfmoon and Water Slug)" },
+  { id:"halfmoon", g:"fauna", name:"Halfmoon", conf:"listed", biome:"Shallows +", where:"Shallows; also the Plateaus, Graveyard, Blighted Coral, Anemone Hills and both Raceways.", biomod:"Oxygen Therapy (with Geordie and Water Slug)" },
+  { id:"hammerhead", g:"fauna", name:"Hammerhead", conf:"listed", where:null },
+  { id:"harvestmoon", g:"fauna", name:"Harvestmoon", conf:"listed", where:null },
+  { id:"hoverthorn", g:"fauna", name:"Hoverthorn", conf:"listed", biome:"Graveyard", where:"Graveyard.", biomod:"Threat Sense" },
+  { id:"jelly-ring", g:"fauna", name:"Jelly Ring", conf:"listed", where:null },
+  { id:"jetocaris", g:"fauna", name:"Jetocaris", conf:"listed", where:null },
+  { id:"clowncrab", g:"fauna", name:"Periscopic Clowncrab", conf:"listed", biome:"Shallows", where:"Shallows.", note:"Only scannable after it detaches." },
+  { id:"pneuma", g:"fauna", name:"Pneuma", conf:"listed", biome:"Graveyard, Root Canyon", where:"Graveyard and Root Canyon." },
+  { id:"surge-jelly", g:"fauna", name:"Surge Jelly", conf:"listed", where:null },
+  { id:"water-slug", g:"fauna", name:"Water Slug", conf:"listed", where:null, biomod:"Water Secretion; Oxygen Therapy (with Geordie and Halfmoon)" },
+  { id:"waxmoon", g:"fauna", name:"Waxmoon", conf:"listed", biome:"Shallows", where:"Shallows. Passive fish." },
+  { id:"bullethead", g:"fauna", name:"Bullethead", conf:"listed", where:null, biomod:"Camouflage" },
+  { id:"cerathecan", g:"fauna", name:"Cerathecan", conf:"listed", biome:"Coral Gardens", where:"Coral Gardens and the Observatory area." },
+  { id:"foureye", g:"fauna", name:"Foureye", conf:"listed", where:null },
+  { id:"houndgar", g:"fauna", name:"Houndgar", conf:"listed", biome:"Graveyard", where:"Graveyard." },
+  { id:"hycean", g:"fauna", name:"Hycean", conf:"listed", where:null },
+  { id:"marrowbreach", g:"fauna", name:"Marrowbreach", conf:"listed", where:null },
+  { id:"needler-mango", g:"fauna", name:"Needler Mango", conf:"listed", biome:"Graveyard, Root Canyon", where:"Graveyard and Root Canyon.", biomod:"Dermal Garden" },
+  { id:"nibbler-mango", g:"fauna", name:"Nibbler Mango", conf:"listed", where:null, biomod:"Predator Sense (active)" },
+  { id:"sandspear", g:"fauna", name:"Sandspear", conf:"listed", biome:"Shallows, Plateaus", where:"Shallows and Plateaus.", biomod:"Bioluminescence (or Electric Geordie)" },
+  { id:"twin-sitaray", g:"fauna", name:"Twin Sitaray", conf:"listed", where:null },
+  { id:"electric-geordie", g:"fauna", name:"Electric Geordie", conf:"listed", where:null, biomod:"Bioluminescence (or Sandspear)" },
+  { id:"tongue-thief", g:"fauna", name:"Tongue Thief", conf:"listed", biome:"Root Canyon", where:"Root Canyon. Aggressive." },
+  // Fauna from player reports
+  { id:"bfj", g:"fauna", name:"BFJ", conf:"report", biome:"Plateaus", where:"Plateaus. One sits about 403 m NNE of the Lifepod." },
+  { id:"floating-tentacles", g:"fauna", name:"Floating tentacled creature", conf:"report", biome:"Shallows", where:"Floats above the water in the Shallows near the Great Jaw. Scan the dangling tentacles.", note:"Name not given in the thread; it may be the BFJ." },
+
+  // Leviathans
+  { id:"collector", g:"leviathan", name:"Collector Leviathan", conf:"listed", biome:"Graveyard, Root Canyon", where:"Graveyard behind the big shipwrecks, Root Canyon, and open deep water east of the Lifepod." },
+  { id:"deepwing", g:"leviathan", name:"Deepwing Brooder", conf:"listed", biome:"Roams", where:"Can appear anywhere; look up above the Karakorum region." },
+  { id:"shiver", g:"leviathan", name:"Shiver Leviathan", conf:"listed", biome:"Void", where:"Past the map edge in the Void.", note:"The table also lists a Shiver Male. Players report dying several times getting this scan." },
+  { id:"great-jaw", g:"leviathan", name:"Great Jaw", conf:"report", biome:"Shallows", where:`Shallows ${C("-345609, 465921")} at about 100 m (a Steam post gives ${C("-345214, 465993")} at 88 m).` },
+  { id:"world-tree", g:"leviathan", name:"World Tree", conf:"report", biome:"NE of Lifepod", where:"Northeast of the Lifepod." },
+
+  // Flora
+  { id:"tallshroom", g:"flora", name:"Tallshroom", conf:"listed", biome:"Hot Cave", where:"Hanging on rocky cave walls in the Hot Cave." },
+  { id:"gateway-spire", g:"flora", name:"Gateway Spire", conf:"disputed", where:null, note:"On the bio-scan table, but a flora checklist says it can't be scanned." },
+  { id:"pent", g:"flora", name:"Pent", conf:"listed", biome:"Coral Gardens", where:"Coral Gardens; one guide says the Plateaus." },
+  { id:"bloom-biofilm", g:"flora", name:"Bloom Biofilm", conf:"listed", where:null },
+  { id:"angel-comb", g:"flora", name:"Angel Comb", conf:"report", biome:"Shallows, Karakorum", where:"Closest at the Anita signal, about 160 m NNE of the Lifepod; also under the Karakorum Power Plant at about 380 m." },
+  { id:"digestion-angel-comb", g:"flora", name:"Digestion Angel Comb", conf:"report", where:null, note:"Counts as a separate bio-scan from other Angel Combs." },
+  { id:"stilt-orb", g:"flora", name:"Stilt Orb", conf:"report", biome:"Necrolei Forest", where:"Necrolei Forest." },
+  { id:"fridge-worm", g:"flora", name:"Fridge Worm", conf:"report", biome:"Hot Cave", where:"Hot Cave, about 200–250 m deep." },
+  { id:"necrolei", g:"flora", name:"Necrolei", conf:"report", biome:"Anemone Hills", where:"Anemone Hills." },
+
+  // Other
+  { id:"fiber", g:"other", name:"Fiber", conf:"report", where:null, note:"A player who reached 80 says it counts." },
+  { id:"coral-shavings", g:"other", name:"Coral Shavings", conf:"report", where:null, note:"A player who reached 80 says it counts." },
+  { id:"false-fission-drum", g:"other", name:"False Fission Drum", conf:"disputed", biome:"Below the map", where:"Hidden deep under the main biomes. Several players say it's the elusive last scan.", note:"One video reaches it by glitching out of the world geometry. Save first." },
+];
+
+const ICON = {
+  bluemoon:"fish", halfmoon:"fish", waxmoon:"fish", harvestmoon:"fish", hammerhead:"fish", bullethead:"fish", foureye:"fish",
+  houndgar:"fish", hoverthorn:"fish", blackthorn:"fish", sandspear:"fish", epicurean:"fish", marrowbreach:"fish", hycean:"fish",
+  "coral-crab":"crab", clowncrab:"crab", jetocaris:"crab", cerathecan:"crab", "tongue-thief":"crab",
+  "jelly-ring":"jelly", "surge-jelly":"jelly", bfj:"jelly", "floating-tentacles":"jelly",
+  "flash-slug":"slug", "water-slug":"slug", "bloom-parasite":"slug", "twin-sitaray":"ray",
+  collector:"leviathan", deepwing:"leviathan", shiver:"leviathan", "great-jaw":"clam", "world-tree":"tree",
+  tallshroom:"mushroom", "angel-comb":"coral", "digestion-angel-comb":"coral", "bloom-biofilm":"coral", "gateway-spire":"coral",
+  pent:"plant", "stilt-orb":"plant", "fridge-worm":"plant", necrolei:"plant",
+  fiber:"object", "coral-shavings":"object", "false-fission-drum":"object",
+};
+const ICON_LABEL = { fish:"Fish", crab:"Crustacean", jelly:"Jelly or floater", slug:"Slug or parasite", ray:"Ray", creature:"Creature", leviathan:"Leviathan", clam:"Giant mollusc", tree:"Titan organism", plant:"Plant", mushroom:"Fungus", coral:"Coral or growth", object:"Object" };
+const icon = d => ICON[d.id] || "creature";
+const picsUrl = d => "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent("Subnautica 2 " + d.name);
+const confLabel = { listed: "In bio-scan table", report: "Player report", disputed: "Disputed" };
+const KEY = "sn2-bioscan-v1";
+let done = new Set();
+try { done = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch (e) {} };
+const state = { g: "all", q: "", hideDone: false };
+
+const track = document.getElementById("track"), marks = document.getElementById("marks");
+MILESTONES.forEach((m, i) => {
+  const pct = (m / 80) * 100;
+  const mk = document.createElement("span"); mk.className = "mark"; mk.style.left = pct + "%"; mk.dataset.m = m; track.appendChild(mk);
+  const lb = document.createElement("span"); lb.style.left = pct + "%"; lb.dataset.m = m; lb.textContent = `${m} · slot ${i + 2}`; marks.appendChild(lb);
+});
+
+const chips = document.getElementById("chips");
+[{ id: "all", label: "All" }, ...GROUPS].forEach(c => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.dataset.g = c.id; b.textContent = c.label;
+  b.setAttribute("aria-pressed", c.id === "all");
+  b.addEventListener("click", () => {
+    state.g = c.id;
+    chips.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x.dataset.g === c.id));
+    render();
+  });
+  chips.appendChild(b);
+});
+
+const esc = s => s.replace(/[&<>"]/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[ch]));
+const plain = s => (s || "").replace(/<[^>]+>/g, "");
+
+function render() {
+  const q = state.q.trim().toLowerCase();
+  let html = "";
+  for (const g of GROUPS) {
+    if (state.g !== "all" && state.g !== g.id) continue;
+    const all = DATA.filter(d => d.g === g.id);
+    const items = all.filter(d => {
+      if (state.hideDone && done.has(d.id)) return false;
+      if (!q) return true;
+      return [d.name, d.biome, d.biomod, d.note, plain(d.where)].join(" ").toLowerCase().includes(q);
+    });
+    if (!items.length) continue;
+    const n = all.filter(d => done.has(d.id)).length;
+    html += `<section class="group"><div class="group-head"><h2>${g.label}</h2><span class="count">${n}/${all.length} scanned</span><p>${g.blurb}</p></div><ul class="list">`;
+    for (const d of items) {
+      const isDone = done.has(d.id);
+      html += `<li class="row${isDone ? " done" : ""}">
+        <input type="checkbox" id="cb-${d.id}" data-id="${d.id}" ${isDone ? "checked" : ""} aria-label="Mark ${esc(d.name)} as bio-scanned">
+        <div class="who"><span class="thumb" title="${ICON_LABEL[icon(d)]}"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#i-${icon(d)}"/></svg></span><div><label for="cb-${d.id}" class="name">${esc(d.name)}</label>
+          <div class="sub">${d.biome ? `<span class="tag">${esc(d.biome)}</span>` : ""}<span class="tag conf-${d.conf}">${confLabel[d.conf]}</span></div></div></div>
+        <div class="where">${d.where ? `<p>${d.where}</p>` : `<p class="unknown">No location reported yet.</p>`}
+          ${d.biomod ? `<div class="biomod"><b>Biomod</b>${esc(d.biomod)}</div>` : ""}
+          ${d.note ? `<div class="note">${esc(d.note)}</div>` : ""}
+          <a class="pics" href="${picsUrl(d)}" target="_blank" rel="noopener">See pictures ↗</a></div>
+      </li>`;
+    }
+    html += `</ul></section>`;
+  }
+  document.getElementById("out").innerHTML = html || `<p class="empty">Nothing matches “${esc(state.q)}”. Try a biome such as Shallows or a biomod such as Camouflage.</p>`;
+
+  const n = DATA.filter(d => done.has(d.id)).length;
+  document.getElementById("done").textContent = n;
+  document.getElementById("known").textContent = DATA.length;
+  document.getElementById("missingTitle").textContent = `About ${80 - DATA.length} bio-scans not listed here`;
+  document.getElementById("barfill").style.width = Math.min(100, n / 80 * 100) + "%";
+  document.querySelectorAll("[data-m]").forEach(el => el.classList.toggle("hit", n >= +el.dataset.m));
+  const next = MILESTONES.find(m => n < m);
+  document.getElementById("nextslot").textContent = next ? `Next passive slot at ${next} (${next - n} to go)` : "All passive slots unlocked";
+}
+
+document.getElementById("out").addEventListener("change", e => {
+  const id = e.target.dataset && e.target.dataset.id;
+  if (!id) return;
+  e.target.checked ? done.add(id) : done.delete(id);
+  save(); render();
+  const el = document.getElementById("cb-" + id); if (el) el.focus();
+});
+document.getElementById("q").addEventListener("input", e => { state.q = e.target.value; render(); });
+document.getElementById("hideDone").addEventListener("change", e => { state.hideDone = e.target.checked; render(); });
+render();
+</script>
+</body>
+</html>
